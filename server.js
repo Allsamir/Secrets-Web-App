@@ -80,7 +80,7 @@ app.route('/secret')
             console.error(error)
          }) 
       } else {
-         res.redirect('/login')
+         res.redirect('/register')
       }
    });
 
