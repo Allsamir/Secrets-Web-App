@@ -61,7 +61,7 @@ app.route('/register')
 
 app.route('/login')
    .get((req, res) => {
-      res.render('login', {username: req.user.username})
+      res.render('login')
    })
    .post(passport.authenticate('local', {
       successRedirect: '/secret',
@@ -74,7 +74,7 @@ app.route('/secret')
          User.find(req.user)
          .then(user => {
             console.log(user)
-            res.render('secret', {userData: user})
+            res.render('secret', {userData: user, username: req.user.username})
          })
          .catch(error => {
             console.error(error)
