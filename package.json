@@ -2,7 +2,7 @@
   "name": "secrets-passport-js-version",
   "version": "1.0.0",
   "description": "This is the passport.js version",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
