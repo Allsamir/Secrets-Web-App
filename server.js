@@ -4,6 +4,7 @@ const session = require('express-session');
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const FacebookStrategy = require('passport-facebook').Strategy;
 const flash = require('express-flash');
 const connectDB = require('./config/db');
 connectDB();
@@ -59,6 +60,22 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secret"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+   console.log(profile);
+    User.findOrCreate({ 
+      username: profile.displayName,
+      facebookId: profile.id 
+   }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 app.route('/')
    .get((req, res) => {
       res.render('home')
@@ -75,6 +92,16 @@ app.get('/auth/google/secret',
     // Successful authentication, redirect home.
     res.redirect('/secret');
   });
+
+app.route('/auth/facebook')
+ .get(passport.authenticate('facebook'));
+
+app.route('/auth/facebook/secret')
+ .get(passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secret');
+  }); 
 
 app.route('/register')
    .get((req, res) => {
