@@ -3,7 +3,8 @@ const express = require('express');
 const session = require('express-session');
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy;
-const mongoose = require('mongoose');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const flash = require('express-flash');
 const connectDB = require('./config/db');
 connectDB();
 const User = require('./mongodb/user');
@@ -13,7 +14,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
-app.use(express.static('public'))
+app.use(express.static('public'));
+app.use(flash());
 app.use(express.urlencoded({
    extended: true
 }));
@@ -27,13 +29,52 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 passport.use(new LocalStrategy(User.authenticate()));
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id)
+    .then(user => {
+      done(null, user);
+    })
+    .catch(err => {
+      done(err, null);
+    });
+});
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secret"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+   console.log(profile.emails[0].value);
+    User.findOrCreate({
+       username: profile.emails[0].value, 
+       googleId: profile.id
+      }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
 app.route('/')
    .get((req, res) => {
       res.render('home')
    });
+
+app.route('/auth/google')
+.get( passport.authenticate('google', { 
+   scope:['profile', 'email'] }
+));
+
+app.get('/auth/google/secret', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secret');
+  });
 
 app.route('/register')
    .get((req, res) => {
@@ -61,7 +102,7 @@ app.route('/register')
 
 app.route('/login')
    .get((req, res) => {
-      res.render('login')
+      res.render('login', {error: req.flash()})
    })
    .post(passport.authenticate('local', {
       successRedirect: '/secret',
@@ -73,8 +114,9 @@ app.route('/secret')
       if (req.isAuthenticated()) {
          User.find(req.user)
          .then(user => {
-            console.log(user)
-            res.render('secret', {userData: user, username: req.user.username})
+            console.log(user);
+            req.flash('success', 'Congratulation! On your successful Login');
+            res.render('secret', {userData: user,  messages: req.flash()})
          })
          .catch(error => {
             console.error(error)
